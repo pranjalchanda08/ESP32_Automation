@@ -10,7 +10,9 @@
 
 typedef enum wlan_q_msg_id
 {
-    WLAN_Q_MSG_ID_BEGIN_SCONFIG ///< Message ID for WLAN Smart Config.
+    WLAN_Q_MSG_ID_BEGIN_SCONFIG, ///< Message ID for WLAN Smart Config.
+    WLAN_Q_MSG_ID_BEGIN_WLAN_CONNECT, ///< Message ID for WLAN Connect.
+    WLAN_Q_MSG_ID_BEGIN_MQTT_CONNECT ///< Message ID for MQTT Start.
 } wlan_q_msg_id_t;
 
 typedef struct wlan_q_msg
@@ -23,6 +25,7 @@ typedef struct wlan_struct
 {
     u_long wlan_connect_retry; ///< Number of times to retry connecting to WLAN.
     bool wlan_connect_status;  ///< Current Connection Status.
+    bool wlan_connect_in_progress;  ///< Current Connection Status.
 } wlan_struct_t;
 
 /**

@@ -26,6 +26,22 @@ void rgb_led::operator<<(const String rgb)
     *this << color;
 }
 
+void rgb_led::set(String LED, bool state)
+{
+    if(LED == "r")
+    {
+        m_r_pin.operator<<(uint8_t(state * 0xFF));
+    }
+    if(LED == "g")
+    {
+        m_g_pin.operator<<(uint8_t(state * 0xFF));
+    }
+    if(LED == "b")
+    {
+        m_b_pin.operator<<(uint8_t(state * 0xFF));
+    }
+}
+
 rgb_led::rgb_led(int r, int g, int b)
     : m_r_pin(r), m_g_pin(g), m_b_pin(b)
 {

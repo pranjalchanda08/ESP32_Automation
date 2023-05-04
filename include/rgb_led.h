@@ -48,6 +48,15 @@ public:
      * @param rgb A string representing the RGB color in hex format, e.g. "FF0000" for red.
      */
     void operator<<(String rgb);
+    
+    /**
+     * @brief Set R G B Individual digital States
+     *
+     * @param rgb A string representing the r g b LED
+     * @param state digital states
+     */
+    
+    void set(String LED, bool state);
 };
 
 #endif /*_RGB_LED_H_*/

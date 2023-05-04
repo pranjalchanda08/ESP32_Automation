@@ -18,7 +18,7 @@
 #define CON_SW      0       ///< Pin connected to the connection switch sensor.
 #define LED_R       32      ///< Pin connected to the red LED.
 #define LED_G       33      ///< Pin connected to the green LED.
-#define LED_B       25      ///< Pin connected to the blue LED.
+#define LED_B       2//25      ///< Pin connected to the blue LED.
 #define SER_CLK     13      ///< Pin connected to the shift register clock.
 #define SER_LATCH   12      ///< Pin connected to the shift register latch.
 #define SER_DATA    14      ///< Pin connected to the shift register data input.
