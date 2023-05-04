@@ -11,7 +11,7 @@ void task_actuators(void *args)
             /* If Drive mode is auto */
             if(g_control_settings.drive_mode == 0)
             {
-                g_relays << (g_control_settings.channel_sw_aut & g_control_settings.channel_sw_man);
+                g_relays << (g_control_settings.channel_sw_aut & g_control_settings.channel_sw_man) * g_control_settings.person_detected;
             }
             else
             {

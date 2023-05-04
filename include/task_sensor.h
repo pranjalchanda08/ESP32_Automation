@@ -13,6 +13,6 @@
  * @param args A pointer to task arguments. Unused in this
  *             implementation.
  */
-void task_sensor (void * args);
+void task_sensor(void *args);
 
 #endif /* _TASK_SENSOR_H_ */

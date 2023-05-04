@@ -74,6 +74,7 @@ void ultrasonic::RTOS_caliberate()
         read();
         m_calib_cm += get_distance_cm();
         i--;
+        ESP_LOGI("ultrasonic", "Calib retry: %d", i);
         vTaskDelay(pdMS_TO_TICKS(50));
     }   
 

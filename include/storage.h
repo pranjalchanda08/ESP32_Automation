@@ -9,11 +9,13 @@ class storage
 public:
     Preferences m_pref;
 public:
+    bool store_broker(String broker);
     bool store_SSID(String ssid);
     bool store_PSK(String ssid);
     bool store_actuator_man(uint8_t state);
     bool store_actuator_aut(uint8_t state);
 
+    String get_stored_broker();
     String get_stored_SSID();
     String get_stored_PSK();
     bool get_actuator_man(uint8_t * val);

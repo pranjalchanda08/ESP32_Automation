@@ -2,6 +2,23 @@
 
 storage g_storage_struct;
 
+bool storage::store_broker(String broker)
+{
+    bool status = false;
+    if (m_pref.putString("mqtt_broker", broker) == broker.length())
+        status = true;
+    else
+    {
+        ESP_LOGE("storage", "SSID save Failed");
+    }
+    return status;
+}
+
+String storage::get_stored_broker()
+{
+    return m_pref.getString("mqtt_broker", "DEADBEEF");
+}
+
 bool storage::store_SSID(String ssid)
 {
     bool status = false;
@@ -83,7 +100,7 @@ String storage::get_stored_PSK()
     return m_pref.getString("wlan_psk", "DEADBEEF");
 }
 
-bool storage::get_actuator_man(uint8_t * val)
+bool storage::get_actuator_man(uint8_t *val)
 {
     uint16_t save = 0x0000;
     save = m_pref.getUShort("actuator_man", 0xDEAD);
@@ -95,9 +112,9 @@ bool storage::get_actuator_man(uint8_t * val)
     }
     *val = 0x00FF & save;
     return true;
-} 
+}
 
-bool storage::get_actuator_aut(uint8_t * val)
+bool storage::get_actuator_aut(uint8_t *val)
 {
     uint16_t save = 0x0000;
     save = m_pref.getUShort("actuator_aut", 0xDEAD);
@@ -118,7 +135,6 @@ Preferences storage::get_mPref()
 
 storage::storage()
 {
-    
 }
 
 storage::~storage()

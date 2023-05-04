@@ -3,18 +3,18 @@
 #include "task_control.h"
 #include "WiFi.h"
 
-#define LOG_TAG_TASK_TIME       "task_time"
+#define LOG_TAG_TASK_TIME       "TASK_TIME"
 
 #define TIME_MIN(hr, min) ((hr * 60) + min)
 
 #define SUNRISE_HR 7
 #define SUNRISE_MIN 0
 
-#define SUNSET_HR 17
-#define SUNSET_MIN 56
+#define SUNSET_HR 18
+#define SUNSET_MIN 30
 
 /* India Time Zone */
-static const char *s_ntpServer = "in.pool.ntp.org";
+static const char *s_ntpServer = CONFIG_ESP_RMAKER_SNTP_SERVER_NAME;
 static const long s_gmtOffset_sec = 19800;
 static const int s_daylightOffset_sec = 0;
 
@@ -35,18 +35,37 @@ c_alarm::c_alarm(alarm_timer_id tim_id, struct tm start_time, struct tm alarm_of
     alarm_reg[tim_id] = this;
 }
 
+c_alarm::c_alarm(alarm_timer_id tim_id, struct tm alarm_offset, bool reload, alarm_cb alarm_cb)
+{
+    struct tm alarm;
+    struct tm start_time;
+    time_t t_now;
+
+    time(&t_now);
+    localtime_r(&t_now, &start_time);
+
+    this->alarm_offset = alarm_offset;
+    this->tim_id = tim_id;
+    alarm = start_time;
+    alarm.tm_hour += alarm_offset.tm_hour;
+    alarm.tm_min += alarm_offset.tm_min;
+    alarm.tm_sec += alarm_offset.tm_sec;
+    this->alarm_time = mktime(&alarm); // Save as epoc time
+    this->reload = reload;
+    this->m_alarm_cb = alarm_cb;
+    alarm_reg[tim_id] = this;
+}
+
 c_alarm::~c_alarm()
 {
 }
 
 void tim_0_alarm_cb(void *args)
 {
-    bool msg_rx;
     ESP_LOGV(LOG_TAG_TASK_TIME, "tim_0_alarm_cb");
     if (g_time_sync_q != NULL)
     {
-        msg_rx = false;
-        xQueueSend(g_time_sync_q, &msg_rx, portMAX_DELAY);
+        task_time_msg(false);
     }
 }
 
@@ -66,25 +85,26 @@ void task_time(void *args)
     tim_0_offset.tm_hour = 0;
     tim_0_offset.tm_min = 0;
     tim_0_offset.tm_sec = 10;
+    
+    g_time_sync_q = xQueueCreate(10, sizeof(uint32_t));
 
     while (true)
     {
-        time(&t_now);
         if (pdTRUE == xQueueReceive(g_time_sync_q, &msg, pdMS_TO_TICKS(1)))
         {
 #if NTP_TIMESYNC
             if (msg == true)
             {
+                ESP_LOGI(LOG_TAG_TASK_TIME, "Getting System Time...");
                 configTime(s_gmtOffset_sec, s_daylightOffset_sec, s_ntpServer);
                 if (!getLocalTime(&now))
                 {
                     ESP_LOGE(LOG_TAG_TASK_TIME, "Failed to obtain time");
-                    msg_rx = true;
-                    xQueueSend(g_time_sync_q, &msg_rx, portMAX_DELAY);
+                    task_time_msg(true);
                 }
                 else
                 {
-                    ESP_LOGI(LOG_TAG_TASK_TIME, "Time Synced: %d:%d:%d",
+                    ESP_LOGI(LOG_TAG_TASK_TIME, "Time in India: %d:%d:%d",
                              now.tm_hour,
                              now.tm_min,
                              now.tm_sec);
@@ -112,11 +132,11 @@ void task_time(void *args)
                 }
                 task_control_msg(CONTROL_Q_MSG_ID_SET_SUNLIGHT_DETECTED, &sunlight);
             }
-
 #endif /* NTP_TIMESYNC */
         }
         else
         {
+            time(&t_now);
             if (alarm_reg[tim_itr_cntr] != NULL)
             {
                 /* If the time expired */
@@ -150,7 +170,22 @@ void task_time(void *args)
 
             tim_itr_cntr++;
             tim_itr_cntr %= ALARM_TIMER_ID_MAX;
-            vTaskDelay(pdMS_TO_TICKS(125));
+            vTaskDelay(pdMS_TO_TICKS(1000/ALARM_TIMER_ID_MAX));
         }
     }
+}
+
+BaseType_t task_time_msg(bool msg_id)
+{
+    static bool msg;
+    BaseType_t status = pdFALSE;
+
+    msg = msg_id;
+
+    status = xQueueSend(g_time_sync_q, &msg, portMAX_DELAY);
+    if (status == pdFALSE)
+    {
+        ESP_LOGE(LOG_TAG_TASK_TIME, "Queue Send Failure");
+    }
+    return status;
 }

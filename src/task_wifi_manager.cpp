@@ -9,6 +9,9 @@
 #include "WiFi.h"
 #include "mqtt.h"
 
+#define TAG_WLAN_EVT        "WiFi_EVT"
+#define TAG_WLAN_MNG        "WLAN_MNG"
+
 #if NTP_TIMESYNC
 #include "time.h"
 
@@ -38,6 +41,7 @@ static bool connect_wlan_using_sconfig();
 static bool wlan_man_connect();
 
 QueueHandle_t g_wlan_q;
+
 #define WLAN_QUEUE_LEN 10                    /**< Length of the WiFi manager queue. */
 #define WLAN_QUEUE_SIZE sizeof(wlan_q_msg_t) /**< Size of each element in the WiFi manager queue. */
 
@@ -45,29 +49,27 @@ static wlan_struct_t s_wlan_struct; /**< Structure to hold the WiFi connection s
 
 void WiFiEvent(WiFiEvent_t event)
 {
-    uint32_t time_q_msg_rx = false;
-    ESP_LOGD("WiFi-event", "%d\n", event);
+    ESP_LOGD(TAG_WLAN_EVT, "%d\n", event);
     switch (event)
     {
     case WIFI_EVENT_STA_START:
         s_wlan_struct.wlan_connect_status = true;
         task_wlan_msg(WLAN_Q_MSG_ID_BEGIN_WLAN_CONNECT, NULL);
         s_wlan_struct.wlan_connect_status = false;
-        
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
-        ESP_LOGI("WiFi-event", "WLAN Connected! SSID:%s IP: %s", WiFi.SSID(), WiFi.localIP().toString().c_str());
+        /* Send a timesync message */
+        task_time_msg(true);
+        /* Start MQTT Connection now */
+        task_wlan_msg(WLAN_Q_MSG_ID_BEGIN_MQTT_CONNECT, NULL);
+
+        ESP_LOGI(TAG_WLAN_EVT, "WLAN Connected! SSID:%s IP: %s", WiFi.SSID(), WiFi.localIP().toString().c_str());
         s_wlan_struct.wlan_connect_status = true;
         g_rgb << "09BA09"; /* Green Shade */
-
-        /* Unlock timesync Thread to sync */
-        time_q_msg_rx = true;
-        xQueueSend(g_time_sync_q, &time_q_msg_rx, portMAX_DELAY);
-        task_wlan_msg(WLAN_Q_MSG_ID_BEGIN_MQTT_CONNECT, NULL);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         s_wlan_struct.wlan_connect_status = false;
-        ESP_LOGI("WiFi-event", "WiFi lost connection");
+        ESP_LOGI(TAG_WLAN_EVT, "WiFi lost connection");
         /* Dont send connect command from here this will hamper sconfig */
         break;
     }
@@ -79,13 +81,10 @@ void task_wifi_manager(void *args)
     WiFi.onEvent(WiFiEvent);
 
     g_wlan_q = xQueueCreate(WLAN_QUEUE_LEN, WLAN_QUEUE_SIZE);
-    g_time_sync_q = xQueueCreate(10, sizeof(uint32_t));
+    
     wlan_q_msg_t msg;
 
-    ESP_LOGI("wifi", "task_wifi_manager created");
-
-    /* Create Alarm Task */
-    xTaskCreate(task_time, "TIME_TASK", 2096, NULL, 19, NULL);
+    ESP_LOGI(TAG_WLAN_MNG, "task_wifi_manager created");
 
     mqtt_client_init();
 
@@ -97,19 +96,20 @@ void task_wifi_manager(void *args)
             {
             case WLAN_Q_MSG_ID_BEGIN_SCONFIG:
 #if WLAN_SCONFIG
-                ESP_LOGI("wifi", "Starting Smart Config");
+                ESP_LOGI(TAG_WLAN_MNG, "Starting Smart Config");
                 if (connect_wlan_using_sconfig() == true)
                 {
                     g_storage_struct.store_SSID(WiFi.SSID());
                     g_storage_struct.store_PSK(WiFi.psk());
-                    ESP_LOGD("wifi", "SSID, PASS saved in NVM");
+                    ESP_LOGD(TAG_WLAN_MNG, "SSID, PASS saved in NVM");
+                    g_rgb << "09BA09"; /* Green Shade */
                 }
                 else
                 {
-
+                    ESP_LOGD(TAG_WLAN_MNG, "WLAN Smart Config Failed...");
                 }
 #else
-                ESP_LOGE("wifi", "WLAN_SCONFIG NOT Enabled");
+                ESP_LOGE(TAG_WLAN_MNG, "WLAN_SCONFIG NOT Enabled");
 #endif /* WLAN_SCONFIG */
                 break;
             case WLAN_Q_MSG_ID_BEGIN_WLAN_CONNECT:
@@ -130,8 +130,6 @@ void task_wifi_manager(void *args)
                 /* Disconnected */
                 task_wlan_msg(WLAN_Q_MSG_ID_BEGIN_WLAN_CONNECT, NULL);
             }
-            /* MQTT Internal calls */
-            mqtt_loop();
         }
     }
 }
@@ -147,7 +145,7 @@ BaseType_t task_wlan_msg(wlan_q_msg_id_t msg_id, void *p_payload)
     status = xQueueSend(g_wlan_q, &msg, portMAX_DELAY);
     if (status == pdFALSE)
     {
-        ESP_LOGE("wifi", "Queue Send Failure");
+        ESP_LOGE(TAG_WLAN_MNG, "Queue Send Failure");
     }
     return status;
 }
@@ -178,11 +176,11 @@ static bool wlan_man_connect()
 #endif /* WLAN_SCONFIG */
     if (SSID.length() < 1 || SSID.equals("DEADBEEF"))
     {
-        ESP_LOGE("wifi", "SSID not saved in NVM");
+        ESP_LOGE(TAG_WLAN_MNG, "SSID not saved in NVM");
     }
     else
     {
-        ESP_LOGI("wifi", "Connecting to SSID: %s", SSID.c_str());
+        ESP_LOGI(TAG_WLAN_MNG, "Connecting to SSID: %s", SSID.c_str());
 #if WLAN_SCONFIG
         PSK = g_storage_struct.get_stored_PSK();
 #else
@@ -190,11 +188,11 @@ static bool wlan_man_connect()
 #endif /* WLAN_SCONFIG */
         if (PSK.equals("DEADBEEF"))
         {
-            ESP_LOGE("wifi", "PSK read failed from nvm");
+            ESP_LOGE(TAG_WLAN_MNG, "PSK read failed from nvm");
         }
         else
         {
-            ESP_LOGD("wifi", "connecting to SSID: %s, PSK: %s", SSID, PSK);
+            ESP_LOGD(TAG_WLAN_MNG, "connecting to SSID: %s, PSK: %s", SSID, PSK);
             WiFi.begin(SSID.c_str(), PSK.c_str());
             retry = 50;
             while (WiFi.status() != WL_CONNECTED && retry)
@@ -208,7 +206,7 @@ static bool wlan_man_connect()
             }
             else
             {
-                ESP_LOGE("wifi", "WLAN Connection failed! Retry: %d", s_wlan_struct.wlan_connect_retry);
+                ESP_LOGE(TAG_WLAN_MNG, "WLAN Connection failed! Retry: %d", s_wlan_struct.wlan_connect_retry);
             }
         }
     }
@@ -235,12 +233,12 @@ static bool connect_wlan_using_sconfig()
         g_rgb.set("b", b_state);
         retry--;
         vTaskDelay(500 / portTICK_RATE_MS);
-        ESP_LOGW("wifi", "Waiting for smart config packets: Retry left: %d", retry);
+        ESP_LOGW(TAG_WLAN_MNG, "Waiting for smart config packets: Retry left: %d", retry);
     }
     if (!retry)
     {
         WiFi.stopSmartConfig();
-        ESP_LOGE("wifi", "No Packets from Smart Config");
+        ESP_LOGE(TAG_WLAN_MNG, "No Packets from Smart Config");
         status = false;
     }
     else
@@ -254,7 +252,7 @@ static bool connect_wlan_using_sconfig()
         }
         if (!retry)
         {
-            ESP_LOGE("wifi", "WLAN Connect Timeout");
+            ESP_LOGE(TAG_WLAN_MNG, "WLAN Connect Timeout");
             status = false;
         }
     }
