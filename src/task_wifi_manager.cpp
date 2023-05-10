@@ -9,8 +9,8 @@
 #include "WiFi.h"
 #include "mqtt.h"
 
-#define TAG_WLAN_EVT        "WiFi_EVT"
-#define TAG_WLAN_MNG        "WLAN_MNG"
+#define TAG_WLAN_EVT "WiFi_EVT"
+#define TAG_WLAN_MNG "WLAN_MNG"
 
 #if NTP_TIMESYNC
 #include "time.h"
@@ -81,7 +81,7 @@ void task_wifi_manager(void *args)
     WiFi.onEvent(WiFiEvent);
 
     g_wlan_q = xQueueCreate(WLAN_QUEUE_LEN, WLAN_QUEUE_SIZE);
-    
+
     wlan_q_msg_t msg;
 
     ESP_LOGI(TAG_WLAN_MNG, "task_wifi_manager created");
@@ -201,10 +201,7 @@ static bool wlan_man_connect()
                 retry--;
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
-            if (WiFi.status() == WL_CONNECTED)
-            {
-            }
-            else
+            if (WiFi.status() != WL_CONNECTED)
             {
                 ESP_LOGE(TAG_WLAN_MNG, "WLAN Connection failed! Retry: %d", s_wlan_struct.wlan_connect_retry);
             }
@@ -232,7 +229,14 @@ static bool connect_wlan_using_sconfig()
         b_state ^= true;
         g_rgb.set("b", b_state);
         retry--;
-        vTaskDelay(500 / portTICK_RATE_MS);
+        /* Break if the Con switch pressed again */
+        g_con_sw.read();
+        if (retry < 95 && g_con_sw.get_cur_state() == false)
+        {
+            ESP_LOGW(TAG_WLAN_MNG, "Smart config User cancelled");
+            retry = 0;
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
         ESP_LOGW(TAG_WLAN_MNG, "Waiting for smart config packets: Retry left: %d", retry);
     }
     if (!retry)
@@ -242,13 +246,13 @@ static bool connect_wlan_using_sconfig()
         status = false;
     }
     else
-    {   
+    {
         status = true;
         retry = 10;
         while (WiFi.status() != WL_CONNECTED && retry)
         {
             retry--;
-            vTaskDelay(500 / portTICK_RATE_MS);
+            vTaskDelay(pdMS_TO_TICKS(500));
         }
         if (!retry)
         {

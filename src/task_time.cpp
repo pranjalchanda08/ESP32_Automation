@@ -32,6 +32,7 @@ c_alarm::c_alarm(alarm_timer_id tim_id, struct tm start_time, struct tm alarm_of
     this->alarm_time = mktime(&alarm); // Save as epoc time
     this->reload = reload;
     this->m_alarm_cb = alarm_cb;
+    this->armed = true;
     alarm_reg[tim_id] = this;
 }
 
@@ -53,6 +54,7 @@ c_alarm::c_alarm(alarm_timer_id tim_id, struct tm alarm_offset, bool reload, ala
     this->alarm_time = mktime(&alarm); // Save as epoc time
     this->reload = reload;
     this->m_alarm_cb = alarm_cb;
+    this->armed = true;
     alarm_reg[tim_id] = this;
 }
 
@@ -73,7 +75,7 @@ void task_time(void *args)
 {
     uint32_t msg;
     uint32_t msg_rx = false;
-
+    static bool time_synced = false;
     bool sunlight = false;
 
     uint8_t tim_itr_cntr = 0;
@@ -83,9 +85,9 @@ void task_time(void *args)
     struct tm tim_0_offset;
 
     tim_0_offset.tm_hour = 0;
-    tim_0_offset.tm_min = 0;
-    tim_0_offset.tm_sec = 10;
-    
+    tim_0_offset.tm_min = 1;
+    tim_0_offset.tm_sec = 0;
+
     g_time_sync_q = xQueueCreate(10, sizeof(uint32_t));
 
     while (true)
@@ -109,6 +111,7 @@ void task_time(void *args)
                              now.tm_min,
                              now.tm_sec);
                     c_alarm(ALARM_TIMER_ID_0, now, tim_0_offset, true, &tim_0_alarm_cb);
+                    time_synced = true;
                 }
             }
             else
@@ -134,13 +137,13 @@ void task_time(void *args)
             }
 #endif /* NTP_TIMESYNC */
         }
-        else
+        else if(time_synced)
         {
             time(&t_now);
             if (alarm_reg[tim_itr_cntr] != NULL)
             {
                 /* If the time expired */
-                if ((unsigned long)t_now >= alarm_reg[tim_itr_cntr]->alarm_time)
+                if (alarm_reg[tim_itr_cntr]->armed && (unsigned long)t_now >= alarm_reg[tim_itr_cntr]->alarm_time)
                 {
                     ESP_LOGV(LOG_TAG_TASK_TIME, "%ld : %ld", alarm_reg[tim_itr_cntr]->alarm_time, (unsigned long)t_now);
                     /* If cb is not NULL */
@@ -162,7 +165,7 @@ void task_time(void *args)
                         else
                         {
                             ESP_LOGV(LOG_TAG_TASK_TIME, "Deleting Timer: %d", tim_itr_cntr);
-                            delete alarm_reg[tim_itr_cntr];
+                            alarm_reg[tim_itr_cntr]->armed = false;
                         }
                     }
                 }
@@ -170,8 +173,8 @@ void task_time(void *args)
 
             tim_itr_cntr++;
             tim_itr_cntr %= ALARM_TIMER_ID_MAX;
-            vTaskDelay(pdMS_TO_TICKS(1000/ALARM_TIMER_ID_MAX));
         }
+        vTaskDelay(pdMS_TO_TICKS(1000/ALARM_TIMER_ID_MAX));
     }
 }
 

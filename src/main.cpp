@@ -27,7 +27,8 @@ input g_motion_det = input(M_DET_OUT);
 
 void setup()
 {
-	Serial.begin(921600);
+	Serial.begin(115200);
+	Serial.println();
 	g_storage_struct.m_pref.begin("store_struct", false);
 
 	ESP_LOGI(TAG_MAIN, "*********************************");
@@ -45,7 +46,7 @@ void setup()
     /* Create Actuator Task Task */
 	xTaskCreate(task_actuators, "ACTUATOR_TASK", TASK_DEFAULT_STACK, NULL, ACTUATOR_TASK_PRIO, NULL);
     /* Create WiFi Manager Task */
-	xTaskCreate(task_wifi_manager, "WIFI_TASK", TASK_DEFAULT_STACK, NULL, WLAN_TASK_PRIO, NULL);
+	xTaskCreate(task_wifi_manager, "WIFI_TASK", TASK_WLAN_STACK, NULL, WLAN_TASK_PRIO, NULL);
 }
 
 void loop()

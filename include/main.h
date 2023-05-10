@@ -24,15 +24,15 @@
  * @brief Pin definitions for the various sensors, actuators, and modules.
  */
 #ifdef INCLUDE_LDR
-#define LDR 36       ///< Pin connected to the LDR sensor.
-#endif               /* INCLUDE_LDR */
-#define CON_SW 0     ///< Pin connected to the connection switch sensor.
-#define LED_R 32     ///< Pin connected to the red LED.
-#define LED_G 33     ///< Pin connected to the green LED.
-#define LED_B 2      // 25      ///< Pin connected to the blue LED.
-#define SER_CLK 13   ///< Pin connected to the shift register clock.
-#define SER_LATCH 12 ///< Pin connected to the shift register latch.
-#define SER_DATA 14  ///< Pin connected to the shift register data input.
+#define LDR 36         ///< Pin connected to the LDR sensor.
+#endif                 /* INCLUDE_LDR */
+#define CON_SW SCON_SW ///< Pin connected to the connection switch sensor.
+#define LED_R 32       ///< Pin connected to the red LED.
+#define LED_G 33       ///< Pin connected to the green LED.
+#define LED_B BLED     ///< Pin connected to the blue LED.
+#define SER_CLK 13     ///< Pin connected to the shift register clock.
+#define SER_LATCH 12   ///< Pin connected to the shift register latch.
+#define SER_DATA 14    ///< Pin connected to the shift register data input.
 
 #ifdef INCLUDE_MICRO_MOTION_DET
 #define M_DET_OUT 26 ///< Motion Detection Pin
@@ -75,5 +75,6 @@ extern QueueHandle_t g_time_sync_q;
 #define ACTUATOR_TASK_PRIO configMAX_PRIORITIES - 10
 
 #define TASK_DEFAULT_STACK 2048
+#define TASK_WLAN_STACK 4096
 
 #endif /*_MAIN_H_*/

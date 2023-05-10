@@ -22,6 +22,7 @@ public:
     long alarm_time;
     bool reload;
     alarm_cb m_alarm_cb;
+    bool armed;
 
 public:
     c_alarm(alarm_timer_id tim_id, struct tm alarm_offset, bool reload, alarm_cb alarm_cb);

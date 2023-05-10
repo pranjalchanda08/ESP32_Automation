@@ -12,6 +12,16 @@
 #define PERSON_ACTIVE_TIMER_PRESCALE TIMER_CLK_MHZ * 100
 #define PERSON_ACTIVE_TIMER_MATCH_VAL PERSON_ACTIVE_TIMER_MINS * 60000
 
+#define SW_MAN_STATE_CTL(state, ch)                     \
+    if (state)                                          \
+    {                                                   \
+        g_control_settings.channel_sw_man |= (1 << 0);  \
+    }                                                   \
+    else                                                \
+    {                                                   \
+        g_control_settings.channel_sw_man &= ~(1 << 0); \
+    }
+
 #define PERSON_ACTIVE_TIMER_MINS 2
 
 static hw_timer_t *person_active_timer = NULL;
@@ -21,7 +31,6 @@ control_t g_control_settings;
 
 void tim_1_alarm_cb(void *args)
 {
-    bool msg_rx;
     ESP_LOGV(TAG_TASK_CONTROL, "tim_1_alarm_cb");
     ESP_LOGI("TIM1_ALARM", "Person detection timeout. Switching off Appliances");
     task_control_msg_isr(CONTROL_Q_MSG_ID_SET_PERSON_DETE_TIM_EXP, NULL);
@@ -47,17 +56,20 @@ void task_control(void *args)
     {
         xQueueReceive(g_control_q, (void *)&msg, portMAX_DELAY);
         ESP_LOGD(TAG_TASK_CONTROL, "CONTROL_Q_MSG, ID: %d", msg.control_q_msg_id);
-        memcpy(&state, msg.p_payload, sizeof(bool));
+        if (msg.p_payload != NULL)
+            memcpy(&state, msg.p_payload, sizeof(bool));
         switch (msg.control_q_msg_id)
         {
         case CONTROL_Q_MSG_ID_SET_MASTER_SWITCH:
             g_control_settings.master_switch = state;
             ESP_LOGD(TAG_TASK_CONTROL, "master_sw: %d", state);
             break;
+
         case CONTROL_Q_MSG_ID_SET_DRIVE_MODE:
             g_control_settings.drive_mode = state;
             ESP_LOGD(TAG_TASK_CONTROL, "drive_mode: %d", state);
             break;
+            
         case CONTROL_Q_MSG_ID_SET_MOTION_DETECTED:
             g_control_settings.person_detected = state;
             ESP_LOGD(TAG_TASK_CONTROL, "person_detected: %d", state);
@@ -65,6 +77,7 @@ void task_control(void *args)
             mqtt_publish(PUB_TOPIC_ID_MOTION, pub.c_str(), false);
             c_alarm(ALARM_TIMER_ID_1, tim_1_offset, false, &tim_1_alarm_cb);
             break;
+
         case CONTROL_Q_MSG_ID_SET_PERSON_DETE_TIM_EXP:
             /* Turn off everything */
             ESP_LOGD(TAG_TASK_CONTROL, "Turning Off Everything");
@@ -72,54 +85,27 @@ void task_control(void *args)
             pub = false;
             mqtt_publish(PUB_TOPIC_ID_MOTION, pub.c_str(), false);
             break;
+
         case CONTROL_Q_MSG_ID_SET_CH0_SWITCH:
-            if (state)
-            {
-                g_control_settings.channel_sw_man |= (1 << 0);
-            }
-            else
-            {
-                g_control_settings.channel_sw_man &= ~(1 << 0);
-            }
+            SW_MAN_STATE_CTL(state, 0);
             ESP_LOGD(TAG_TASK_CONTROL, "CH0: %d", state);
-
             break;
+
         case CONTROL_Q_MSG_ID_SET_CH1_SWITCH:
-            if (state)
-            {
-                g_control_settings.channel_sw_man |= (1 << 1);
-            }
-            else
-            {
-                g_control_settings.channel_sw_man &= ~(1 << 1);
-            }
+            SW_MAN_STATE_CTL(state, 1);
             ESP_LOGD(TAG_TASK_CONTROL, "CH1: %d", state);
-
             break;
+
         case CONTROL_Q_MSG_ID_SET_CH2_SWITCH:
-            if (state)
-            {
-                g_control_settings.channel_sw_man |= (1 << 2);
-            }
-            else
-            {
-                g_control_settings.channel_sw_man &= ~(1 << 2);
-            }
+            SW_MAN_STATE_CTL(state, 2);
             ESP_LOGD(TAG_TASK_CONTROL, "CH1: %d", state);
-
             break;
+
         case CONTROL_Q_MSG_ID_SET_CH3_SWITCH:
-            if (state)
-            {
-                g_control_settings.channel_sw_man |= (1 << 3);
-            }
-            else
-            {
-                g_control_settings.channel_sw_man &= ~(1 << 3);
-            }
+            SW_MAN_STATE_CTL(state, 4);
             ESP_LOGD(TAG_TASK_CONTROL, "CH3: %d", state);
-
             break;
+
         case CONTROL_Q_MSG_ID_SET_SUNLIGHT_DETECTED:
             g_control_settings.sunlight = state;
             ESP_LOGD(TAG_TASK_CONTROL, "sunlight: %d", state);
