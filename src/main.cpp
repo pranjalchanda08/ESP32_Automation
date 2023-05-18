@@ -9,6 +9,8 @@
 
 #define TAG_MAIN "MAIN"
 
+/* Peripheral Init */
+
 #ifdef INCLUDE_LDR
 input g_ldr = input(LDR);
 #endif /*INCLUDE_LDR*/
@@ -37,6 +39,8 @@ void setup()
 	ESP_LOGI(TAG_MAIN, "* Initialising....");
 	ESP_LOGI(TAG_MAIN, "*********************************");
 
+    /* Create WiFi Manager Task */
+	xTaskCreate(task_wifi_manager, "WIFI_TASK", TASK_WLAN_STACK, NULL, WLAN_TASK_PRIO, NULL);
     /* Create Alarm Task */
     xTaskCreate(task_time, "TIME_TASK", TASK_DEFAULT_STACK, NULL, TIME_TASK_PRIO, NULL);
     /* Create Sensor Task */
@@ -45,8 +49,6 @@ void setup()
 	xTaskCreate(task_control, "CONTROL_TASK", TASK_DEFAULT_STACK, NULL, CONTROL_TASK_PRIO, NULL);
     /* Create Actuator Task Task */
 	xTaskCreate(task_actuators, "ACTUATOR_TASK", TASK_DEFAULT_STACK, NULL, ACTUATOR_TASK_PRIO, NULL);
-    /* Create WiFi Manager Task */
-	xTaskCreate(task_wifi_manager, "WIFI_TASK", TASK_WLAN_STACK, NULL, WLAN_TASK_PRIO, NULL);
 }
 
 void loop()

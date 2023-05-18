@@ -3,7 +3,7 @@
 #include "task_control.h"
 #include "WiFi.h"
 
-#define LOG_TAG_TASK_TIME       "TASK_TIME"
+#define LOG_TAG_TASK_TIME "TASK_TIME"
 
 #define TIME_MIN(hr, min) ((hr * 60) + min)
 
@@ -110,6 +110,7 @@ void task_time(void *args)
                              now.tm_hour,
                              now.tm_min,
                              now.tm_sec);
+                    task_time_msg(false);
                     c_alarm(ALARM_TIMER_ID_0, now, tim_0_offset, true, &tim_0_alarm_cb);
                     time_synced = true;
                 }
@@ -137,7 +138,7 @@ void task_time(void *args)
             }
 #endif /* NTP_TIMESYNC */
         }
-        else if(time_synced)
+        else if (time_synced)
         {
             time(&t_now);
             if (alarm_reg[tim_itr_cntr] != NULL)
@@ -152,7 +153,7 @@ void task_time(void *args)
                         /* Call the callback */
                         ESP_LOGV(LOG_TAG_TASK_TIME, "callback registered");
                         localtime_r(&t_now, &now);
-                        
+
                         alarm_reg[tim_itr_cntr]->m_alarm_cb(&now);
                         if (alarm_reg[tim_itr_cntr]->reload)
                         {
@@ -164,7 +165,7 @@ void task_time(void *args)
                         }
                         else
                         {
-                            ESP_LOGV(LOG_TAG_TASK_TIME, "Deleting Timer: %d", tim_itr_cntr);
+                            ESP_LOGV(LOG_TAG_TASK_TIME, "Disarming Timer: %d", tim_itr_cntr);
                             alarm_reg[tim_itr_cntr]->armed = false;
                         }
                     }
@@ -174,7 +175,7 @@ void task_time(void *args)
             tim_itr_cntr++;
             tim_itr_cntr %= ALARM_TIMER_ID_MAX;
         }
-        vTaskDelay(pdMS_TO_TICKS(1000/ALARM_TIMER_ID_MAX));
+        vTaskDelay(pdMS_TO_TICKS(1000 / ALARM_TIMER_ID_MAX));
     }
 }
 

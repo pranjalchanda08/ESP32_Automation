@@ -1,6 +1,8 @@
 #include "main.h"
 #include "task_actuator.h"
 
+#define ACTUATOR_TASK_DEL_MS 1
+
 void task_actuators(void *args)
 {
     ESP_LOGI("task_actuator", "task_actuators created");
@@ -24,6 +26,6 @@ void task_actuators(void *args)
             /* Set all channel to reset */
             g_relays << 0x00;
         }
-        vTaskDelay(1);
+        vTaskDelay(pdMS_TO_TICKS(ACTUATOR_TASK_DEL_MS));
     }    
 }

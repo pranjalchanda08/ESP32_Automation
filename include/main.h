@@ -7,41 +7,41 @@
 #include "ultrasonic.h"
 #include "ser_output.h"
 #include "storage.h"
+#if NTP_TIMESYNC
+#include "time.h"
 
-#ifndef INCLUDE_MICRO_MOTION_DET
-#undef INCLUDE_MICRO_MOTION_DET
-#endif /*INCLUDE_MICRO_MOTION_DET*/
-
-#ifndef INCLUDE_LDR
-#undef INCLUDE_LDR
-#endif /*INCLUDE_LDR*/
-
-#ifndef INCLUDE_ULTRASONIC
-#undef INCLUDE_ULTRASONIC
-#endif /*INCLUDE_ULTRASONIC*/
+#define BOARD_ESP32_WROOM_IOT_v1 100
 
 /**
  * @brief Pin definitions for the various sensors, actuators, and modules.
  */
+#if BOARD == BOARD_ESP32_WROOM_IOT_v1
+#define INCLUDE_MICRO_MOTION_DET
+
 #ifdef INCLUDE_LDR
-#define LDR 36         ///< Pin connected to the LDR sensor.
-#endif                 /* INCLUDE_LDR */
-#define CON_SW SCON_SW ///< Pin connected to the connection switch sensor.
-#define LED_R 32       ///< Pin connected to the red LED.
-#define LED_G 33       ///< Pin connected to the green LED.
-#define LED_B BLED     ///< Pin connected to the blue LED.
-#define SER_CLK 13     ///< Pin connected to the shift register clock.
-#define SER_LATCH 12   ///< Pin connected to the shift register latch.
-#define SER_DATA 14    ///< Pin connected to the shift register data input.
+#define LDR 26 ///< Pin connected to the LDR sensor.
+#endif         /* INCLUDE_LDR */
+
+#define CON_SW 0     // 34        ///< Pin connected to the connection switch sensor.
+#define LED_R 32     ///< Pin connected to the red LED.
+#define LED_G 33     ///< Pin connected to the green LED.
+#define LED_B 25     ///< Pin connected to the blue LED.
+#define SER_CLK 13   ///< Pin connected to the shift register clock.
+#define SER_LATCH 12 ///< Pin connected to the shift register latch.
+#define SER_DATA 14  ///< Pin connected to the shift register data input.
 
 #ifdef INCLUDE_MICRO_MOTION_DET
-#define M_DET_OUT 26 ///< Motion Detection Pin
+#define M_DET_OUT 35 ///< Motion Detection Pin
 #endif               /* INCLUDE_MICRO_MOTION_DET */
 
 #ifdef INCLUDE_ULTRASONIC
 #define UL_TRIGG 26 ///< Pin connected to the ultrasonic sensor trigger.
 #define UL_ECHO 27  ///< Pin connected to the ultrasonic sensor echo.
 #endif              /* INCLUDE_ULTRASONIC*/
+
+#else
+#error "Select a Board"
+#endif /* BOARD */
 
 /**
  * @brief Global instances of various sensor and actuator objects.
@@ -60,9 +60,6 @@ extern ultrasonic g_ultrasonic; ///< Object representing the ultrasonic sensor.
 #ifdef INCLUDE_MICRO_MOTION_DET
 extern input g_motion_det;
 #endif /* INCLUDE_MICRO_MOTION_DET */
-
-#if NTP_TIMESYNC
-#include "time.h"
 
 extern struct tm g_timeinfo;
 extern QueueHandle_t g_time_sync_q;

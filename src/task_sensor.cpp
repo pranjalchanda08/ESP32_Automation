@@ -3,10 +3,11 @@
 #include "task_wifi_manager.h"
 #include "mqtt.h"
 
-#define TAG_SENSOR      "TASK_SENSOR"
+#define TAG_SENSOR "TASK_SENSOR"
+#define SENSOR_TASK_DEL_MS 500
 
 #define TIMER_CLK_MHZ 80
-#define PERSON_DETECT_PRESCALE  4
+#define PERSON_DETECT_PRESCALE 4
 
 #define PERSON_ACTIVE_TIMER_MINS 2
 
@@ -35,7 +36,7 @@ void task_sensor(void *args)
         state = g_con_sw.get_cur_state();
         if (!state && (pdTRUE != task_wlan_msg(WLAN_Q_MSG_ID_BEGIN_SCONFIG, (void *)&state)))
         {
-            ESP_LOGE("task_control", "WLAN Queue Full");
+            ESP_LOGW(TAG_SENSOR, "Sensor Q data send failed");
         }
 #ifdef INCLUDE_LDR
         /* Read LDR State */
@@ -43,9 +44,9 @@ void task_sensor(void *args)
         ESP_LOGD(TAG_SENSOR, "LDR: %d", (int)g_ldr.get_cur_state());
         if (pdTRUE != task_control_msg(CONTROL_Q_MSG_ID_SET_SUNLIGHT_DETECTED, (void *)g_ldr.get_cur_state()))
         {
-            ESP_LOGE("task_control", "Control Queue Full");
+            ESP_LOGW(TAG_SENSOR, "Sensor Q data send failed");
         }
-#endif /* INCLUDE_LDR */
+#endif  /* INCLUDE_LDR */
         /* Read Ultrasonic distance */
 #ifdef INCLUDE_ULTRASONIC
         g_ultrasonic.read();
@@ -53,7 +54,7 @@ void task_sensor(void *args)
         state = g_ultrasonic.isPerson();
         if (state && (pdTRUE != task_control_msg(CONTROL_Q_MSG_ID_SET_MOTION_DETECTED, (void *)&state)))
         {
-            ESP_LOGE("task_control", "Control Queue Full");
+            ESP_LOGW(TAG_SENSOR, "Sensor Q data send failed");
         }
 #endif /* INCLUDE_ULTRASONIC*/
 #ifdef INCLUDE_MICRO_MOTION_DET
@@ -62,12 +63,12 @@ void task_sensor(void *args)
         ESP_LOGD(TAG_SENSOR, "Motion Detection: %d", state);
         if (!motion_detect_prescale && state && (pdTRUE != task_control_msg(CONTROL_Q_MSG_ID_SET_MOTION_DETECTED, (void *)&state)))
         {
-            ESP_LOGE("task_control", "Control Queue Full");
+            ESP_LOGW(TAG_SENSOR, "Sensor Q data send failed");
         }
-        motion_detect_prescale ++;
+        motion_detect_prescale++;
         motion_detect_prescale = motion_detect_prescale % PERSON_DETECT_PRESCALE;
 #endif /* INCLUDE_MICRO_MOTION_DET */
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(SENSOR_TASK_DEL_MS));
     }
 }
 
@@ -77,7 +78,7 @@ static void _sensor_caliberate()
     ESP_LOGI(TAG_SENSOR, "Sensors Caliberating...");
 
     g_ultrasonic.RTOS_caliberate();
-    ESP_LOGD(TAG_SENSOR, "ULTRASONIC Calib: %f cm",  g_ultrasonic.get_calib_cm());
+    ESP_LOGD(TAG_SENSOR, "ULTRASONIC Calib: %f cm", g_ultrasonic.get_calib_cm());
 
     ESP_LOGI(TAG_SENSOR, "Caliberation Done..");
 }

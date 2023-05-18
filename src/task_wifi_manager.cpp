@@ -11,6 +11,7 @@
 
 #define TAG_WLAN_EVT "WiFi_EVT"
 #define TAG_WLAN_MNG "WLAN_MNG"
+#define WLAN_TASK_DEL_MS 100
 
 #if NTP_TIMESYNC
 #include "time.h"
@@ -46,6 +47,7 @@ QueueHandle_t g_wlan_q;
 #define WLAN_QUEUE_SIZE sizeof(wlan_q_msg_t) /**< Size of each element in the WiFi manager queue. */
 
 static wlan_struct_t s_wlan_struct; /**< Structure to hold the WiFi connection state. */
+static bool wlan_task_created = false;
 
 void WiFiEvent(WiFiEvent_t event)
 {
@@ -88,9 +90,11 @@ void task_wifi_manager(void *args)
 
     mqtt_client_init();
 
+    wlan_task_created = true;
+
     while (true)
     {
-        if (xQueueReceive(g_wlan_q, &msg, pdMS_TO_TICKS(100)) == pdTRUE)
+        if (xQueueReceive(g_wlan_q, &msg, pdMS_TO_TICKS(WLAN_TASK_DEL_MS)) == pdTRUE)
         {
             switch (msg.wlan_q_msg_id)
             {
@@ -141,6 +145,11 @@ BaseType_t task_wlan_msg(wlan_q_msg_id_t msg_id, void *p_payload)
 
     msg.wlan_q_msg_id = msg_id;
     msg.p_payload = p_payload;
+
+    if (wlan_task_created == false)
+    {
+        return false;
+    }
 
     status = xQueueSend(g_wlan_q, &msg, portMAX_DELAY);
     if (status == pdFALSE)
